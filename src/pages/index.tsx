@@ -32,7 +32,7 @@ function TextToSpeech() {
       const payload = {
         model: "openai-audio",
         audio: { voice: "alloy", format: "mp3"},
-        modalities: ["audio"],
+        modalities: ["text", "audio"],
         messages: [
           {
       role: "system",
