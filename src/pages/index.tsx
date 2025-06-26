@@ -17,18 +17,42 @@ function TextToSpeech() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleSubmit = async () => {
-    setLoading(true);
-    const formData = new FormData();
-    formData.append("text", text);
-    const res = await fetch("http://localhost:8000/synthesize/", {
-      method: "POST",
-      body: formData,
+  setLoading(true);
+  try {
+    // URL-encode the text input
+    const encodedText = encodeURIComponent(text);
+    
+    // Create query string with parameters
+    const queryParams = new URLSearchParams({
+      model: "openai-audio",
+      voice: "alloy"
+    }).toString();
+    
+    // Construct the API URL
+    const apiUrl = `https://text.pollinations.ai/${encodedText}?${queryParams}`;
+    
+    const res = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "audio/mpeg"
+      }
     });
+    
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     setAudioSrc(url);
+  } catch (error) {
+    console.error("Error generating audio:", error);
+    // Optionally set an error state
+    // setError("Failed to generate audio");
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   return (
     <div
