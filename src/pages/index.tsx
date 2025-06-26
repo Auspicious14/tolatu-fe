@@ -34,6 +34,10 @@ function TextToSpeech() {
         audio: { voice: "alloy", format: "mp3"},
         modalities: ["text", "audio"],
         messages: [
+          {
+      role: "system",
+      content: "Convert the following user input directly to speech without generating a conversational response."
+    },
          {
             role: "user",
             content: text
