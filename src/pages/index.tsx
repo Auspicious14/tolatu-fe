@@ -30,12 +30,12 @@ function TextToSpeech() {
     try {
       const apiUrl = "https://text.pollinations.ai/openai";
       const payload = {
-        "model": "openai-audio",
-         "voice": "alloy",
-        "messages": [
+        model: "openai-audio",
+         voice: "alloy",
+        messages: [
          {
-            "role": "user",
-            "content": text
+            role: "user",
+            content: text
          },  
         ]
       };
@@ -50,7 +50,9 @@ function TextToSpeech() {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const errorText = await res.text();
+        throw new Error(`HTTP error! status: ${res.status}, details: ${errorText}`);
+      //  throw new Error(`HTTP error! status: ${res.status}`);
       }
 
       const responseData = await res.json();
