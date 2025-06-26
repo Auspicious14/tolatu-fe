@@ -42,7 +42,7 @@ function TextToSpeech() {
             "role": "user",
             "content": text
          },
-          private: true
+          "private": true
         ],
       
       };
