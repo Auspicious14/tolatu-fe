@@ -15,45 +15,62 @@ function TextToSpeech() {
   const [text, setText] = useState("");
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState("")
 
   const handleSubmit = async () => {
-  setLoading(true);
-  try {
-    // URL-encode the text input
-    const encodedText = encodeURIComponent(text);
-    
-    // Create query string with parameters
-    const queryParams = new URLSearchParams({
-      model: "openai-audio",
-      voice: "alloy"
-    }).toString();
-    
-    // Construct the API URL
-    const apiUrl = `https://text.pollinations.ai/${encodedText}?${queryParams}`;
-    
-    const res = await fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        "Accept": "audio/mpeg"
-      }
-    });
-    
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-    
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    setAudioSrc(url);
-  } catch (error) {
-    console.error("Error generating audio:", error);
-    // Optionally set an error state
-    // setError("Failed to generate audio");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setError("");
 
+    if (!text.trim()) {
+      setError("Please enter some text to convert to audio.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const apiUrl = "https://text.pollinations.ai/openai";
+      const payload = {
+        model: "openai-audio",
+        messages: [
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        voice: "alloy",
+        response_format: "mp3"
+      };
+
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const responseData = await res.json();
+      
+  
+      if (!responseData.choices?.[0]?.message?.audio?.data) {
+        throw new Error("No audio data returned from the API.");
+      }
+
+      const audioBase64 = responseData.choices[0].message.audio.data;
+      const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
+      setAudioSrc(audioUrl);
+    } catch (error) {
+      console.error("Error generating audio:", error);
+      setError(error.message || "Failed to generate audio. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div
       className={`${geistSans.className} ${geistMono.className} min-h-screen font-[family-name:var(--font-geist-sans)]`}
@@ -71,7 +88,7 @@ function TextToSpeech() {
             rows={4}
             className="w-full p-4 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
-
+          
           <button
             onClick={handleSubmit}
             disabled={loading}
@@ -79,7 +96,9 @@ function TextToSpeech() {
           >
             {loading ? "Generating…" : "Convert to Audio"}
           </button>
-
+          
+           {error && <p className="text-red-500" >{error}</p>}
+          
           {audioSrc && (
             <div className="flex flex-col items-center">
               <audio src={audioSrc} controls className="w-full mb-4" />
