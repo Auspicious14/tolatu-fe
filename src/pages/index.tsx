@@ -64,7 +64,7 @@ function TextToSpeech() {
       const audioBase64 = responseData.choices[0].message.audio.data;
       const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
       setAudioSrc(audioUrl);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating audio:", error);
       setError(error.message || "Failed to generate audio. Please try again.");
     } finally {
