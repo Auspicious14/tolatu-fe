@@ -30,16 +30,14 @@ function TextToSpeech() {
     try {
       const apiUrl = "https://text.pollinations.ai/openai";
       const payload = {
-        model: "openai-audio",
-        "modalities": [ "audio"],
-        "audio": { "voice": "alloy", "format": "mp3" },
+        "model": "openai-audio",
+         "voice": "alloy",
         "messages": [
          {
             "role": "user",
             "content": text
          },  
-        ],
-      "private": false
+        ]
       };
 
       const res = await fetch(apiUrl, {
