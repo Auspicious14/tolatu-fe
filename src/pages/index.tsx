@@ -32,11 +32,8 @@ function TextToSpeech() {
     try {
       const apiUrlFull = `${apiUrl}/text-to-speech`;
       const res = await fetch(apiUrlFull, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text })
+        method: "GET",
+        params: { text }
       });
 
       if (!res.ok) {
