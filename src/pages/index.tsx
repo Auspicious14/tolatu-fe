@@ -47,7 +47,7 @@ function TextToSpeech() {
       const blob = await res.blob();
       const audioUrl = URL.createObjectURL(blob);
       setAudioSrc(audioUrl);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating audio:", error);
       setError(error.message || "Failed to generate audio. Please try again.");
     } finally {
