@@ -101,11 +101,13 @@ const geistMono = Geist_Mono({
 
 export default TextToSpeech; */
 
-
 const TextToSpeech = () => {
   const [text, setText] = useState("");
-  const [voices, setVoices] = useState<string[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("");
+  const [voices, setVoices] = useState<{ label: string; value: string }[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<{
+    label: string;
+    value: string;
+  } | null>(null);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState("");
@@ -117,10 +119,27 @@ const TextToSpeech = () => {
       try {
         const res = await fetch(`${apiUrl}/get-available-voices`);
         const data = await res.json();
-        const filteredVoices = data.data.map((voice: any) => voice.ShortName)
-        setVoices(filteredVoices || []);
-        if (data.data && data.data.length > 0) {
-          setSelectedVoice(data.data[0]);
+        const voiceOptions = data.data;
+
+        const sortedVoices = voiceOptions.sort((a: any, b: any) => {
+          if (a.country === "Nigeria" && b.country !== "Nigeria") return -1;
+          if (a.country !== "Nigeria" && b.country === "Nigeria") return 1;
+          if (a.name < b.name) return -1;
+          if (a.name > b.name) return 1;
+          return 0;
+        });
+
+        setVoices(
+          sortedVoices.map((v: any) => ({
+            label: `${v.name} (${v.gender}, ${v.country})`,
+            value: v.voice,
+          }))
+        );
+        if (voiceOptions.length > 0) {
+          setSelectedVoice({
+            label: `${sortedVoices[0].name} (${sortedVoices[0].gender}, ${sortedVoices[0].country})`,
+            value: sortedVoices[0].voice,
+          });
         }
       } catch (err) {
         console.error("Failed to load voices", err);
@@ -142,23 +161,28 @@ const TextToSpeech = () => {
 
     try {
       const query = new URLSearchParams({
-        text: text.trim(),
-        voice: selectedVoice || "",
+        text: encodeURIComponent(text),
+        voice: selectedVoice?.value || "",
       });
-
-      const res = await fetch(`${apiUrl}/text-to-speech-with-edge?${query.toString()}`, {
-        method: "GET",
-        headers: {
-          Accept: "audio/mpeg",
-        },
-      });
+      const res = await fetch(
+        `${apiUrl}/text-to-speech-with-edge?${query.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "audio/mpeg",
+          },
+        }
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(`HTTP error! status: ${res.status}, details: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${res.status}, details: ${errorText}`
+        );
       }
 
       const blob = await res.blob();
+
       const audioUrl = URL.createObjectURL(blob);
       setAudioSrc(audioUrl);
     } catch (error: any) {
@@ -172,7 +196,9 @@ const TextToSpeech = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-6 flex flex-col items-center">
       <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-md">
-        <h1 className="text-4xl font-semibold mb-6 text-center text-gray-100">Text to Audio</h1>
+        <h1 className="text-4xl font-semibold mb-6 text-center text-gray-100">
+          Text to Audio
+        </h1>
 
         <textarea
           value={text}
@@ -183,17 +209,21 @@ const TextToSpeech = () => {
         />
 
         <select
-          value={selectedVoice}
-          onChange={(e) => setSelectedVoice(e.target.value)}
+          value={selectedVoice?.value}
+          onChange={(e) => {
+            const voice = voices.find((v) => v.value === e.target.value);
+            if (voice) {
+              setSelectedVoice(voice);
+            }
+          }}
           className="w-full p-3 mb-4 text-gray-100 bg-gray-700 rounded-lg focus:outline-none"
         >
           {voices.map((voice) => (
-            <option key={voice} value={voice}>
-              {voice}
+            <option key={voice.value} value={voice.value}>
+              {voice.label}
             </option>
           ))}
         </select>
-
         <button
           onClick={handleSubmit}
           disabled={loading}
