@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 
 const geistSans = Geist({
@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-function TextToSpeech() {
+/*function TextToSpeech() {
   const [text, setText] = useState("");
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -98,5 +98,127 @@ function TextToSpeech() {
     </div>
   );
 }
+
+export default TextToSpeech; */
+
+
+const TextToSpeech = () => {
+  const [text, setText] = useState("");
+  const [voices, setVoices] = useState<string[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>("");
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState("");
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // Load voices on mount
+  useEffect(() => {
+    const fetchVoices = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/get-available-voices`);
+        const data = await res.json();
+        setVoices(data.data || []);
+        if (data.data && data.data.length > 0) {
+          setSelectedVoice(data.data[0]);
+        }
+      } catch (err) {
+        console.error("Failed to load voices", err);
+        setError("Could not load available voices.");
+      }
+    };
+    fetchVoices();
+  }, [apiUrl]);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError("");
+
+    if (!text.trim()) {
+      setError("Please enter some text to convert to audio.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const query = new URLSearchParams({
+        text: text.trim(),
+        voice: selectedVoice || "",
+      });
+
+      const res = await fetch(`${apiUrl}/text-to-speech-with-edge?${query.toString()}`, {
+        method: "GET",
+        headers: {
+          Accept: "audio/mpeg",
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP error! status: ${res.status}, details: ${errorText}`);
+      }
+
+      const blob = await res.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      setAudioSrc(audioUrl);
+    } catch (error: any) {
+      console.error("Error generating audio:", error);
+      setError(error.message || "Failed to generate audio. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-6 flex flex-col items-center">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-md">
+        <h1 className="text-4xl font-semibold mb-6 text-center text-gray-100">Text to Audio</h1>
+
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Enter text"
+          rows={4}
+          className="w-full p-4 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+        />
+
+        <select
+          value={selectedVoice}
+          onChange={(e) => setSelectedVoice(e.target.value)}
+          className="w-full p-3 mb-4 text-gray-100 bg-gray-700 rounded-lg focus:outline-none"
+        >
+          {voices.map((voice) => (
+            <option key={voice} value={voice}>
+              {voice}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full p-4 mb-4 font-semibold text-gray-100 bg-pink-500 rounded-lg transition transform hover:bg-pink-600 active:scale-95 disabled:opacity-50"
+        >
+          {loading ? "Generating…" : "Convert to Audio"}
+        </button>
+
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+
+        {audioSrc && (
+          <div className="flex flex-col items-center">
+            <audio src={audioSrc} controls className="w-full mb-4" />
+            <a
+              href={audioSrc}
+              download="generated.mp3"
+              className="font-semibold text-pink-500 transition hover:text-pink-400"
+            >
+              Download Audio
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default TextToSpeech;
