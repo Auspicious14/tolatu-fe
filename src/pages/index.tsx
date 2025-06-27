@@ -161,7 +161,7 @@ const TextToSpeech = () => {
 
     try {
       const query = new URLSearchParams({
-        text: encodeURIComponent(text),
+        text: text,
         voice: selectedVoice?.value || "",
       });
       const res = await fetch(
@@ -208,22 +208,24 @@ const TextToSpeech = () => {
           className="w-full p-4 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
         />
 
-        <select
-          value={selectedVoice?.value}
-          onChange={(e) => {
-            const voice = voices.find((v) => v.value === e.target.value);
-            if (voice) {
-              setSelectedVoice(voice);
-            }
-          }}
-          className="w-full p-3 mb-4 text-gray-100 bg-gray-700 rounded-lg focus:outline-none"
-        >
-          {voices.map((voice) => (
-            <option key={voice.value} value={voice.value}>
-              {voice.label}
-            </option>
-          ))}
-        </select>
+        {voices?.length > 0 && (
+          <select
+            value={selectedVoice?.value}
+            onChange={(e) => {
+              const voice = voices.find((v) => v.value === e.target.value);
+              if (voice) {
+                setSelectedVoice(voice);
+              }
+            }}
+            className="w-full p-3 mb-4 text-gray-100 bg-gray-700 rounded-lg focus:outline-none"
+          >
+            {voices.map((voice) => (
+              <option key={voice.value} value={voice.value}>
+                {voice.label}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           onClick={handleSubmit}
           disabled={loading}
