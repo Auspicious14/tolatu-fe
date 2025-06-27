@@ -21,6 +21,8 @@ function TextToSpeech() {
     setLoading(true);
     setError("");
 
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
     if (!text.trim()) {
       setError("Please enter some text to convert to audio.");
       setLoading(false);
@@ -28,49 +30,24 @@ function TextToSpeech() {
     }
 
     try {
-      const apiUrl = "https://text.pollinations.ai/openai";
-      const payload = {
-        model: "openai-audio",
-        audio: { voice: "alloy", format: "mp3"},
-        modalities: ["text", "audio"],
-        messages: [
-          {
-      role: "system",
-      content: "Convert the following user input directly to speech without generating a conversational response."
-    },
-         {
-            role: "user",
-            content: text
-         },  
-        ]
-      };
-
-      const res = await fetch(apiUrl, {
+      const apiUrlFull = `${apiUrl}/text-to-speech`;
+      const res = await fetch(apiUrlFull, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ text })
       });
 
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`HTTP error! status: ${res.status}, details: ${errorText}`);
-      //  throw new Error(`HTTP error! status: ${res.status}`);
       }
 
-      const responseData = await res.json();
-      
-  
-      if (!responseData.choices?.[0]?.message?.audio?.data) {
-        throw new Error("No audio data returned from the API.");
-      }
-
-      const audioBase64 = responseData.choices[0].message.audio.data;
-      const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
+      const blob = await res.blob();
+      const audioUrl = URL.createObjectURL(blob);
       setAudioSrc(audioUrl);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error generating audio:", error);
       setError(error.message || "Failed to generate audio. Please try again.");
     } finally {
@@ -110,7 +87,7 @@ function TextToSpeech() {
               <audio src={audioSrc} controls className="w-full mb-4" />
               <a
                 href={audioSrc}
-                download="generated.wav"
+                download="generated.mp3"
                 className="font-semibold text-pink-500 transition hover:text-pink-400"
               >
                 Download Audio
