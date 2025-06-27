@@ -112,13 +112,13 @@ const TextToSpeech = () => {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // Load voices on mount
   useEffect(() => {
     const fetchVoices = async () => {
       try {
         const res = await fetch(`${apiUrl}/get-available-voices`);
         const data = await res.json();
-        setVoices(data.data || []);
+        const filteredVoices = data.data.map((voice: any) => voice.ShortName)
+        setVoices(filteredVoices || []);
         if (data.data && data.data.length > 0) {
           setSelectedVoice(data.data[0]);
         }
@@ -128,7 +128,7 @@ const TextToSpeech = () => {
       }
     };
     fetchVoices();
-  }, [apiUrl]);
+  }, []);
 
   const handleSubmit = async () => {
     setLoading(true);
