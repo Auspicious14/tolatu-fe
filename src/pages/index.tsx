@@ -31,11 +31,13 @@ function TextToSpeech() {
 
     try {
       const apiUrlFull = `${apiUrl}/text-to-speech`;
-      const res = await fetch(apiUrlFull, {
-        method: "GET",
-        params: { text }
+      const res = await fetch(`${apiUrlFull}?text=${encodeURIComponent(text)}`, {
+             method: "GET",
+             headers: {
+             "Accept": "audio/mpeg"
+             }
       });
-
+      
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`HTTP error! status: ${res.status}, details: ${errorText}`);
