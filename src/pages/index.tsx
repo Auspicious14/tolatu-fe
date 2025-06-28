@@ -203,9 +203,9 @@ const TextToSpeech = () => {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Enter text"
-          rows={4}
+          rows={6}
           className="w-full p-4 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+          placeholder="Enter text to convert to speech..."
         />
 
         {voices?.length > 0 && (
@@ -217,7 +217,7 @@ const TextToSpeech = () => {
                 setSelectedVoice(voice);
               }
             }}
-            className="w-full p-3 mb-4 text-gray-100 bg-gray-700 rounded-lg focus:outline-none"
+            className="w-full p-2 mb-4 border rounded bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500 transition duration-150"
           >
             {voices.map((voice) => (
               <option key={voice.value} value={voice.value}>
@@ -233,6 +233,13 @@ const TextToSpeech = () => {
         >
           {loading ? "Generating…" : "Convert to Audio"}
         </button>
+        {text.length > 200 && loading && (
+          <div style={{ color: "#f59e42", marginTop: 8 }}>
+            ⚠️ Your text is quite long! Generating audio might take a little
+            longer depending on your connection and server load. Please be
+            patient 😊
+          </div>
+        )}
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
