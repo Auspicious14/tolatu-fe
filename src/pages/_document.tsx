@@ -11,7 +11,7 @@ export default function Document() {
       <meta name="keywords" content="text to speech, TTS, AI voice, speech synthesis, audio generation, image to speech" />
       <meta name="robots" content="index, follow" />
       <Head />
-      <body className="antialiased">
+      <body className="antialiased font-sans">
         <Main />
         <NextScript />
       </body>

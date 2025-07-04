@@ -124,7 +124,7 @@ const TextToSpeech = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-between ${geistSans.variable} ${geistMono.variable}`}>
       {/* Hero Section */}
       <section className="flex-1 flex flex-col justify-center items-center py-16 px-4 text-center">
         <motion.h1
