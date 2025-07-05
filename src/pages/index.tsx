@@ -59,23 +59,23 @@ const TextToSpeech = () => {
           toast.error("No voices available");
         }
         const voiceOptions = response.data;
-        const sortedVoices = voiceOptions.sort((a: any, b: any) => {
-          if (a.country === "Nigeria" && b.country !== "Nigeria") return -1;
-          if (a.country !== "Nigeria" && b.country === "Nigeria") return 1;
-          if (a.name < b.name) return -1;
-          if (a.name > b.name) return 1;
-          return 0;
-        });
+        // const sortedVoices = voiceOptions.sort((a: any, b: any) => {
+        //   if (a.country === "Nigeria" && b.country !== "Nigeria") return -1;
+        //   if (a.country !== "Nigeria" && b.country === "Nigeria") return 1;
+        //   if (a.name < b.name) return -1;
+        //   if (a.name > b.name) return 1;
+        //   return 0;
+        // });
         setVoices(
-          sortedVoices.map((v: any) => ({
+          voiceOptions.map((v: any) => ({
             label: `${v.name} (${v.gender}, ${v.country})`,
             value: v.voice,
           }))
         );
         if (voiceOptions.length > 0) {
           setSelectedVoice({
-            label: `${sortedVoices[0].name} (${sortedVoices[0].gender}, ${sortedVoices[0].country})`,
-            value: sortedVoices[0].voice,
+            label: `${voiceOptions[0].name} (${voiceOptions[0].gender}, ${voiceOptions[0].country})`,
+            value: voiceOptions[0].voice,
           });
         }
       } catch (err) {
@@ -124,7 +124,9 @@ const TextToSpeech = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-between ${geistSans.variable} ${geistMono.variable}`}>
+    <div
+      className={`min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-between ${geistSans.variable} ${geistMono.variable}`}
+    >
       {/* Hero Section */}
       <section className="flex-1 flex flex-col justify-center items-center py-16 px-4 text-center">
         <motion.h1
@@ -239,7 +241,7 @@ const TextToSpeech = () => {
       </section>
 
       {/* Footer */}
-      <footer className="mt-auto py-6 text-center text-gray-400 bg-gray-900">
+      <footer className="mt-auto py-6 text-center text-gray-400">
         <span>
           Made by{" "}
           <span className="text-pink-400 font-semibold">Auspicious</span> &copy;{" "}
