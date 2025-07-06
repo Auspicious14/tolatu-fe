@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { toast } from "react-toastify";
+import Image from "next/image";
+import { base } from "framer-motion/client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,6 +49,11 @@ const TextToSpeech = () => {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState("");
+  const [base64Image, setBase64Image] = useState<string>("");
+  const [imageAudioSrc, setImageAudioSrc] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
@@ -59,13 +66,6 @@ const TextToSpeech = () => {
           toast.error("No voices available");
         }
         const voiceOptions = response.data;
-        // const sortedVoices = voiceOptions.sort((a: any, b: any) => {
-        //   if (a.country === "Nigeria" && b.country !== "Nigeria") return -1;
-        //   if (a.country !== "Nigeria" && b.country === "Nigeria") return 1;
-        //   if (a.name < b.name) return -1;
-        //   if (a.name > b.name) return 1;
-        //   return 0;
-        // });
         setVoices(
           voiceOptions.map((v: any) => ({
             label: `${v.name} (${v.gender}, ${v.country})`,
@@ -120,6 +120,86 @@ const TextToSpeech = () => {
       setError(error.message || "Failed to generate audio. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const base64Image = await convertImageToBase64(e.target.files[0]);
+      setImageFile(e.target.files[0]);
+      if (!base64Image) {
+        return;
+      }
+      setBase64Image(base64Image);
+    }
+  };
+
+  const convertImageToBase64 = (file: File): Promise<string | null> => {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        setImageError("Please select an image to convert.");
+        setImageLoading(false);
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        const base64Image = reader.result as string;
+        if (!base64Image) {
+          setImageError("Failed to convert image to base64.");
+          setImageLoading(false);
+          resolve(null);
+          return;
+        }
+        resolve(base64Image);
+      };
+
+      reader.onerror = () => {
+        setImageError("Error reading file.");
+        setImageLoading(false);
+        reject(new Error("Failed to read file"));
+      };
+
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageToSpeech = async () => {
+    setImageLoading(true);
+    setImageError("");
+    if (!base64Image) {
+      setImageError("Please select an image to proceed.");
+      setImageLoading(false);
+      return;
+    }
+    try {
+      const res = await axios.post(
+        `${apiUrl}/image-to-speech`,
+        {
+          image: {
+            uri: base64Image,
+            name: imageFile?.name,
+            type: imageFile?.type,
+          },
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          responseType: "blob", // Important for handling binary data
+        }
+      );
+
+      if (res.status !== 200) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const audioUrl = URL.createObjectURL(res.data);
+      setImageAudioSrc(audioUrl);
+    } catch (error: any) {
+      console.error("Error generating image audio:", error);
+      setImageError(error.message || "Failed to generate audio from image.");
+    } finally {
+      setImageLoading(false);
     }
   };
 
@@ -183,7 +263,7 @@ const TextToSpeech = () => {
           className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg"
         >
           <h2 className="text-3xl font-semibold mb-6 text-center text-gray-100">
-            Try It Out
+            Text to Speech
           </h2>
           <textarea
             value={text}
@@ -192,6 +272,12 @@ const TextToSpeech = () => {
             className="w-full p-4 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
             placeholder="Enter text to convert to speech..."
           />
+          {text.length > 200 && (
+            <p className="text-yellow-400 text-sm mb-4">
+              ⚠️ Long text detected! Audio generation might take a bit longer.
+              Please be patient. ⏳
+            </p>
+          )}
           {voices?.length > 0 && (
             <select
               value={selectedVoice?.value}
@@ -240,13 +326,75 @@ const TextToSpeech = () => {
         </motion.div>
       </section>
 
+      {/* Image to Speech Section */}
+      <section className="flex flex-col items-center justify-center py-10 px-4 w-full">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7 }}
+          className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg"
+        >
+          <h2 className="text-3xl font-semibold mb-6 text-center text-gray-100">
+            Image to Speech
+          </h2>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="w-full p-3 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+          />
+          {base64Image && (
+            <div className="mb-4 text-center text-gray-300 flex justify-center items-center">
+              <Image
+                src={base64Image}
+                alt="Selected"
+                width={96} // Required width prop for Next.js Image
+                height={96} // Required height prop for Next.js Image
+                className="w-24 h-24 object-cover rounded-full"
+              />
+            </div>
+          )}
+          <button
+            onClick={handleImageToSpeech}
+            disabled={imageLoading}
+            className="w-full bg-pink-600 text-white p-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {imageLoading ? "Converting Image..." : "Convert Image to Speech"}
+          </button>
+          {imageError && (
+            <p className="text-red-500 mt-4 text-center">{imageError}</p>
+          )}
+          {imageAudioSrc && (
+            <div className="mt-6 w-full">
+              <audio controls src={imageAudioSrc} className="w-full">
+                Your browser does not support the audio element.
+              </audio>
+              <a
+                href={imageAudioSrc}
+                download="image_speech.mp3"
+                className="block text-center text-pink-400 hover:underline mt-2"
+              >
+                Download Image Audio
+              </a>
+            </div>
+          )}
+        </motion.div>
+      </section>
+
       {/* Footer */}
-      <footer className="mt-auto py-6 text-center text-gray-400">
-        <span>
-          Made by{" "}
-          <span className="text-pink-400 font-semibold">Auspicious</span> &copy;{" "}
-          {new Date().getFullYear()}
-        </span>
+      <footer className="w-full py-8 text-center text-gray-400 text-sm border-t border-gray-700">
+        <p>
+          &copy; {new Date().getFullYear()} Tolatu. All rights reserved. Built
+          with 💡 by
+          <a
+            href="https://github.com/auspicious14"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-pink-500 hover:underline"
+          >
+            Auspicious
+          </a>
+        </p>
       </footer>
     </div>
   );
