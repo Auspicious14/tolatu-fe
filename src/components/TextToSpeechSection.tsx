@@ -1,6 +1,24 @@
-import { motion } from "framer-motion";
 import React from "react";
 import { Voice } from "../services/api";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 type TextToSpeechSectionProps = {
   text: string;
@@ -26,76 +44,73 @@ const TextToSpeechSection: React.FC<TextToSpeechSectionProps> = ({
   error,
 }) => {
   return (
-    <section className="flex flex-col items-center justify-center py-10 px-4 w-full mb-8">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.7 }}
-        className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg"
-      >
-        <h2 className="text-3xl font-semibold mb-6 text-center text-gray-100">
-          Text to Speech
-        </h2>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={6}
-          className="w-full p-4 mb-4 text-gray-100 bg-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-          placeholder="Enter text to convert to speech..."
-        />
-        {text.length > 200 && (
-          <p className="text-yellow-400 text-sm mb-4">
-            ⚠️ Long text detected! Audio generation might take a bit longer.
-            Please be patient. ⏳
-          </p>
-        )}
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        {voices?.length > 0 && (
-          <select
+    <Card className="w-full max-w-lg bg-gray-800 border-gray-700 text-white">
+      <CardHeader>
+        <CardTitle className="text-2xl text-pink-400">Text to Speech</CardTitle>
+        <CardDescription>
+          Enter text, choose a voice, and generate audio.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="text">Your Text</Label>
+          <Textarea
+            id="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Enter text to convert to speech..."
+            className="bg-gray-900 border-gray-600 focus:ring-pink-500"
+          />
+          {text.length > 200 && (
+            <p className="text-sm text-yellow-400">
+              ⚠️ Long text may take a moment to generate.
+            </p>
+          )}
+          {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="voice">Select a Voice</Label>
+          <Select
             value={selectedVoice?.value}
-            onChange={(e) => {
-              const voice = voices.find((v) => v.value === e.target.value);
+            onValueChange={(value) => {
+              const voice = voices.find((v) => v.value === value);
               if (voice) {
                 setSelectedVoice(voice);
               }
             }}
-            className="w-full p-2 mb-4 border rounded bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500 transition duration-150"
           >
-            {voices.map((voice) => (
-              <option key={voice.value} value={voice.value}>
-                {voice.label}
-              </option>
-            ))}
-          </select>
-        )}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full p-4 mb-4 font-semibold text-gray-100 bg-pink-500 rounded-lg transition transform hover:bg-pink-600 active:scale-95 disabled:opacity-50"
-        >
-          {loading ? "Generating…" : "Convert to Audio"}
-        </button>
-        {text.length > 200 && loading && (
-          <div style={{ color: "#f59e42", marginTop: 8 }}>
-            ⚠️ Your text is quite long! Generating audio might take a little
-            longer depending on your connection and server load. Please be
-            patient 😊
-          </div>
-        )}
+            <SelectTrigger className="w-full bg-gray-900 border-gray-600">
+              <SelectValue placeholder="Select a voice" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-800 text-white border-gray-600">
+              {voices.map((voice) => (
+                <SelectItem key={voice.value} value={voice.value}>
+                  {voice.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col gap-4">
+        <Button onClick={handleSubmit} disabled={loading} className="w-full">
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {loading ? "Generating..." : "Convert to Audio"}
+        </Button>
         {audioSrc && (
-          <div className="flex flex-col items-center">
-            <audio src={audioSrc} controls className="w-full mb-4" />
+          <div className="w-full">
+            <audio src={audioSrc} controls className="w-full" />
             <a
               href={audioSrc}
               download="generated.mp3"
-              className="font-semibold text-pink-500 transition hover:text-pink-400"
+              className="text-sm text-pink-400 hover:underline text-center block mt-2"
             >
               Download Audio
             </a>
           </div>
         )}
-      </motion.div>
-    </section>
+      </CardFooter>
+    </Card>
   );
 };
 

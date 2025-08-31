@@ -1,7 +1,17 @@
-import { motion } from "framer-motion";
-import Image from "next/image";
 import React from "react";
+import Image from "next/image";
 import { useDropzone } from "react-dropzone";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Loader2, UploadCloud } from "lucide-react";
 
 type ImageToSpeechSectionProps = {
   base64Image: string;
@@ -30,68 +40,72 @@ const ImageToSpeechSection: React.FC<ImageToSpeechSectionProps> = ({
   });
 
   return (
-    <section className="flex flex-col items-center justify-center py-10 px-4 w-full mb-8">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.7 }}
-        className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg"
-      >
-        <h2 className="text-3xl font-semibold mb-6 text-center text-gray-100">
-          Image to Speech
-        </h2>
-        <div
-          {...getRootProps()}
-          className={`w-full p-6 mb-4 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
-            isDragActive ? "border-pink-500 bg-gray-700" : "border-gray-600"
-          }`}
-        >
-          <input {...getInputProps()} />
-          {isDragActive ? (
-            <p className="text-pink-400">Drop the image here ...</p>
-          ) : (
-            <p className="text-gray-400">
-              Drag 'n' drop an image here, or click to select an image
-            </p>
-          )}
+    <Card className="w-full max-w-lg bg-gray-800 border-gray-700 text-white">
+      <CardHeader>
+        <CardTitle className="text-2xl text-pink-400">Image to Speech</CardTitle>
+        <CardDescription>
+          Upload an image, and we'll read the text to you.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="image-dropzone">Upload Image</Label>
+          <div
+            {...getRootProps()}
+            id="image-dropzone"
+            className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              isDragActive
+                ? "border-pink-500 bg-gray-700"
+                : "border-gray-600 hover:border-gray-500"
+            }`}
+          >
+            <input {...getInputProps()} />
+            <UploadCloud className="w-10 h-10 mb-2 text-gray-400" />
+            {isDragActive ? (
+              <p className="text-pink-400">Drop the image here...</p>
+            ) : (
+              <p className="text-gray-400">
+                Drag & drop or click to upload
+              </p>
+            )}
+          </div>
+          {imageError && <p className="text-sm text-red-500">{imageError}</p>}
         </div>
-        {imageError && (
-          <p className="text-red-500 mt-4 text-center">{imageError}</p>
-        )}
         {base64Image && (
-          <div className="mb-4 text-center text-gray-300 flex justify-center items-center">
+          <div className="flex justify-center">
             <Image
               src={base64Image}
               alt="Selected"
-              width={96}
-              height={96}
-              className="w-24 h-24 object-cover rounded-full"
+              width={128}
+              height={128}
+              className="object-cover rounded-lg"
             />
           </div>
         )}
-        <button
+      </CardContent>
+      <CardFooter className="flex flex-col gap-4">
+        <Button
           onClick={handleImageToSpeech}
           disabled={imageLoading || !base64Image}
-          className="w-full bg-pink-600 text-white p-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full"
         >
-          {imageLoading ? "Converting Image..." : "Convert Image to Speech"}
-        </button>
+          {imageLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {imageLoading ? "Converting..." : "Convert Image to Speech"}
+        </Button>
         {imageAudioSrc && (
-          <div className="mt-6 w-full">
-            <audio controls src={imageAudioSrc} className="w-full">
-              Your browser does not support the audio element.
-            </audio>
+          <div className="w-full">
+            <audio controls src={imageAudioSrc} className="w-full" />
             <a
               href={imageAudioSrc}
               download="image_speech.mp3"
-              className="block text-center text-pink-400 hover:underline mt-2"
+              className="text-sm text-pink-400 hover:underline text-center block mt-2"
             >
-              Download Image Audio
+              Download Audio
             </a>
           </div>
         )}
-      </motion.div>
-    </section>
+      </CardFooter>
+    </Card>
   );
 };
 
