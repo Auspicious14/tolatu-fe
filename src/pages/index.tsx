@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
-import { toast } from "react-toastify";
-import Hero from "../components/Hero";
+import Navbar from "../components/Navbar";
 import Features from "../components/Features";
-import TextToSpeechSection from "../components/TextToSpeechSection";
-import ImageToSpeechSection from "../components/ImageToSpeechSection";
 import Footer from "../components/Footer";
-import {
-  fetchVoices,
-  textToSpeech,
-  imageToSpeech,
-  Voice,
-} from "../services/api";
+import { motion } from "framer-motion";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,126 +16,60 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const getErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-};
-
-const TextToSpeechPage = () => {
-  const [text, setText] = useState("");
-  const [voices, setVoices] = useState<Voice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
-  const [audioSrc, setAudioSrc] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState("");
-  const [base64Image, setBase64Image] = useState<string>("");
-  const [imageAudioSrc, setImageAudioSrc] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState<boolean>(false);
-  const [imageError, setImageError] = useState<string>("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-
-  useEffect(() => {
-    const loadVoices = async () => {
-      try {
-        const voiceOptions = await fetchVoices();
-        setVoices(voiceOptions);
-        if (voiceOptions.length > 0) {
-          setSelectedVoice(voiceOptions[0]);
-        }
-      } catch (err) {
-        console.error("Failed to load voices", err);
-        toast.error("Could not load available voices.");
-      }
-    };
-    loadVoices();
-  }, []);
-
-  const handleSubmit = async () => {
-    if (!text.trim()) {
-      setError("Please enter some text to convert to audio.");
-      return;
-    }
-    if (!selectedVoice) {
-      setError("Please select a voice.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const blob = await textToSpeech(text, selectedVoice.value);
-      const audioUrl = URL.createObjectURL(blob);
-      setAudioSrc(audioUrl);
-      toast.success("Audio generated successfully!");
-    } catch (error: unknown) {
-      console.error("Error generating audio:", error);
-      toast.error(getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onImageDrop = (file: File) => {
-    setImageFile(file);
-    setImageError("");
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setBase64Image(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleImageToSpeech = async () => {
-    if (!base64Image) {
-      setImageError("Please select an image to proceed.");
-      return;
-    }
-    setImageLoading(true);
-    setImageError("");
-    try {
-      const blob = await imageToSpeech(base64Image, imageFile);
-      const audioUrl = URL.createObjectURL(blob);
-      setImageAudioSrc(audioUrl);
-      toast.success("Image audio generated successfully!");
-    } catch (error: unknown) {
-      console.error("Error generating image audio:", error);
-      toast.error(getErrorMessage(error));
-    } finally {
-      setImageLoading(false);
-    }
-  };
-
+const LandingPage = () => {
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-between ${geistSans.variable} ${geistMono.variable}`}
+      className={`min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white ${geistSans.variable} ${geistMono.variable}`}
     >
-      <main className="flex-1 flex flex-col items-center justify-center w-full">
-        <Hero />
-        <Features />
-        <TextToSpeechSection
-          text={text}
-          setText={setText}
-          voices={voices}
-          selectedVoice={selectedVoice}
-          setSelectedVoice={setSelectedVoice}
-          audioSrc={audioSrc}
-          loading={loading}
-          error={error}
-          handleSubmit={handleSubmit}
-        />
-        <ImageToSpeechSection
-          base64Image={base64Image}
-          onImageDrop={onImageDrop}
-          handleImageToSpeech={handleImageToSpeech}
-          imageLoading={imageLoading}
-          imageError={imageError}
-          imageAudioSrc={imageAudioSrc}
-        />
+      <Navbar />
+      <main className="pt-24">
+        {/* Hero Section */}
+        <section className="text-center py-20 px-4">
+          <motion.h1
+            initial={{ opacity: 0, y: -40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-5xl md:text-6xl font-bold mb-6 text-pink-500 drop-shadow-lg"
+          >
+            Bring Your Content to Life
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="text-lg md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto"
+          >
+            Effortlessly convert text and images into natural-sounding speech.
+            Perfect for creators, educators, and anyone looking to make their
+            content more accessible.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+          >
+            <Link
+              href="/workspace"
+              className="px-8 py-4 bg-pink-500 rounded-lg font-semibold text-xl hover:bg-pink-600 transition-colors transform hover:scale-105"
+            >
+              Get Started for Free
+            </Link>
+          </motion.div>
+        </section>
+
+        {/* Features Section */}
+        <section id="features" className="py-20 px-4">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-4xl font-bold text-center mb-12 text-gray-100">
+              Why Choose Tolatu?
+            </h2>
+            <Features />
+          </div>
+        </section>
       </main>
       <Footer />
     </div>
   );
 };
 
-export default TextToSpeechPage;
+export default LandingPage;
