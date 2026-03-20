@@ -33,18 +33,18 @@ export async function textToSpeech(
 }
 
 export async function imageToSpeech(
-  base64Image: string,
+  base64File: string,
   _file?: File | null
 ): Promise<Blob> {
   const res = await fetch(`${API_BASE}/image-to-speech`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: base64Image }),
+    body: JSON.stringify({ file: base64File }),
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Image TTS request failed" }));
-    throw new Error(err.message ?? "Image TTS request failed");
+    const err = await res.json().catch(() => ({ message: "File TTS request failed" }));
+    throw new Error(err.message ?? "File TTS request failed");
   }
 
   return res.blob();

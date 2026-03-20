@@ -19,9 +19,21 @@ const ImageToSpeechSection: React.FC<Props> = ({
 }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: files => { if (files[0]) onImageDrop(files[0]); },
-    accept: { "image/*": [] },
+    accept: {
+      "image/*":       [],
+      "application/pdf": [],
+      "text/plain":    [],
+    },
     maxFiles: 1,
   });
+
+  const fileLabel = (file: string) => {
+    if (!file) return null;
+    if (file.includes("application/pdf")) return "PDF uploaded";
+    if (file.includes("text/plain"))      return "Text file uploaded";
+    return null; // image — show preview
+  };
+  const uploadedLabel = fileLabel(base64Image);
 
   const canConvert = !imageLoading && !!base64Image;
 
@@ -73,17 +85,31 @@ const ImageToSpeechSection: React.FC<Props> = ({
           <input {...getInputProps()} />
 
           {base64Image ? (
-            <div className="relative w-36 h-36 my-4">
-              <Image
-                src={base64Image}
-                alt="Selected image"
-                fill
-                className="object-cover rounded-xl"
-              />
-              <div className="absolute inset-0 rounded-xl bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <span className="text-white text-xs font-medium">Change</span>
+            uploadedLabel ? (
+              // PDF or TXT — show file icon + label
+              <div className="flex flex-col items-center gap-3 py-10 px-6 text-center">
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center"
+                  style={{ background: "var(--amber-dim2)", color: "var(--amber)" }}
+                >
+                  {base64Image.includes("application/pdf") ? (
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  ) : (
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  )}
+                </div>
+                <p className="text-sm font-light" style={{ color: "var(--amber2)" }}>{uploadedLabel}</p>
+                <p className="text-xs" style={{ color: "var(--text3)" }}>Click to change</p>
               </div>
-            </div>
+            ) : (
+              // Image — show preview
+              <div className="relative w-36 h-36 my-4">
+                <Image src={base64Image} alt="Selected" fill className="object-cover rounded-xl" />
+                <div className="absolute inset-0 rounded-xl bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <span className="text-white text-xs font-medium">Change</span>
+                </div>
+              </div>
+            )
           ) : (
             <div className="flex flex-col items-center gap-3 py-10 px-6 text-center">
               <div
@@ -97,7 +123,7 @@ const ImageToSpeechSection: React.FC<Props> = ({
                   {isDragActive ? "Drop it here" : "Drag & drop or click to upload"}
                 </p>
                 <p className="text-xs" style={{ color: "var(--text3)" }}>
-                  Screenshots, photos, scanned text
+                  Images, PDFs, or .txt files
                 </p>
               </div>
             </div>
@@ -112,7 +138,7 @@ const ImageToSpeechSection: React.FC<Props> = ({
           style={{ background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text2)" }}
         >
           <svg className="shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          AI reads the text in your image using vision + Kokoro TTS. Works great on screenshots, photos of notices, and scanned documents.
+          Supports images, PDFs (up to 10 pages), and .txt files. Text is extracted with Gemini Vision then read aloud with Kokoro TTS.
         </div>
       </div>
 

@@ -1,141 +1,222 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const KOKORO_BASE_URL = process.env.KOKORO_API_URL || "";
-const GEMINI_API_KEY  = process.env.GEMINI_API_KEY  || "";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
-// Increase Vercel function timeout for image processing
+const MAX_FILE_SIZE_MB = 10;
+
 export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "10mb",
-    },
-  },
+  api: { bodyParser: { sizeLimit: "15mb" } },
 };
 
-async function extractTextFromImage(base64Image: string): Promise<{ text: string; voice: string }> {
-  // Strip data URL prefix if present — e.g. "data:image/png;base64,..."
-  const base64Data = base64Image.includes(",") ? base64Image.split(",")[1] : base64Image;
-  const mimeType   = base64Image.includes("data:") ? base64Image.split(";")[0].replace("data:", "") : "image/jpeg";
+// ── Helpers ────────────────────────────────────────────────────────────────
 
+function stripDataUrl(dataUrl: string): { base64: string; mimeType: string } {
+  if (dataUrl.includes(",")) {
+    const [meta, base64] = dataUrl.split(",");
+    return {
+      base64,
+      mimeType: meta.replace("data:", "").replace(";base64", ""),
+    };
+  }
+  return { base64: dataUrl, mimeType: "application/octet-stream" };
+}
+
+function detectFileType(
+  mimeType: string,
+): "image" | "pdf" | "text" | "unknown" {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType === "text/plain") return "text";
+  return "unknown";
+}
+
+function langToVoice(lang: string): string {
+  const map: Record<string, string> = {
+    en: "af_heart",
+    fr: "af_heart",
+    yo: "af_heart",
+    ha: "af_heart",
+    ig: "af_heart",
+    pcm: "af_heart",
+  };
+  return map[lang] ?? "af_heart";
+}
+
+const JSON_PROMPT = `Return a JSON object with two fields:
+- "text": full extracted text, preserving paragraph breaks with \\n\\n
+- "lang": detected language code (en, fr, yo, ha, ig, pcm for Nigerian Pidgin)
+If no readable text exists, return { "text": "", "lang": "en" }.
+Return ONLY raw JSON — no markdown, no explanation.`;
+
+function parseGeminiJson(raw: string): { text: string; lang: string } {
+  try {
+    const cleaned = raw.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return { text: raw.trim(), lang: "en" };
+  }
+}
+
+// ── Extractors ─────────────────────────────────────────────────────────────
+
+async function extractFromImage(base64: string, mimeType: string) {
   const body = {
     contents: [
       {
         parts: [
+          { inline_data: { mime_type: mimeType, data: base64 } },
           {
-            inline_data: { mime_type: mimeType, data: base64Data },
-          },
-          {
-            text: `Extract ALL readable text from this image exactly as written. 
-Return a JSON object with two fields:
-- "text": the full extracted text, preserving line breaks with \\n
-- "lang": the detected language code (e.g. "en", "fr", "yo", "ha", "ig", "pcm" for Nigerian Pidgin)
-
-If there is no readable text, return { "text": "", "lang": "en" }.
-Return ONLY the raw JSON object — no markdown, no explanation.`,
+            text: `Extract ALL readable text from this image exactly as written.\n${JSON_PROMPT}`,
           },
         ],
       },
     ],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+    generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
   };
 
-  const geminiRes = await fetch(
+  const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }
+    },
   );
-
-  if (!geminiRes.ok) {
-    throw new Error(`Gemini API error: ${geminiRes.status}`);
-  }
-
-  const geminiData = await geminiRes.json();
-  const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-  let extracted: { text: string; lang: string } = { text: rawText.trim(), lang: "en" };
-
-  try {
-    // Gemini sometimes wraps in ```json ... ```
-    const cleaned = rawText.replace(/```json\n?|\n?```/g, "").trim();
-    extracted = JSON.parse(cleaned);
-  } catch {
-    // If JSON parse fails, use the raw text as-is
-    extracted.text = rawText.trim();
-  }
-
-  if (!extracted.text.trim()) {
-    throw new Error("No readable text found in image");
-  }
-
-  // Map detected lang to best Kokoro voice
-  const langToVoice: Record<string, string> = {
-    en:  "af_heart",
-    fr:  "af_heart",   // Kokoro doesn't have French — fallback
-    yo:  "af_heart",   // Yoruba — Kokoro fallback (use /tts/yoruba if needed)
-    ha:  "af_heart",
-    ig:  "af_heart",
-    pcm: "af_heart",   // Pidgin — closest to English
-  };
-
-  const voice = langToVoice[extracted.lang] ?? "af_heart";
-  return { text: extracted.text, voice };
+  if (!res.ok) throw new Error(`Gemini vision error: ${res.status}`);
+  const data = await res.json();
+  return parseGeminiJson(
+    data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "",
+  );
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function extractFromPdf(base64: string) {
+  const body = {
+    contents: [
+      {
+        parts: [
+          { inline_data: { mime_type: "application/pdf", data: base64 } },
+          {
+            text: `Extract ALL readable text from this PDF (maximum 10 pages).\n${JSON_PROMPT}`,
+          },
+        ],
+      },
+    ],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+  };
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) throw new Error(`Gemini PDF error: ${res.status}`);
+  const data = await res.json();
+  return parseGeminiJson(
+    data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "",
+  );
+}
+
+function extractFromText(base64: string) {
+  return {
+    text: Buffer.from(base64, "base64").toString("utf-8").trim(),
+    lang: "en",
+  };
+}
+
+// ── Kokoro TTS ─────────────────────────────────────────────────────────────
+
+async function synthesise(text: string, voice: string): Promise<Buffer> {
+  const res = await fetch(`${KOKORO_BASE_URL}/tts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice, speed: 1.0, lang_code: "a" }),
+  });
+  if (!res.ok)
+    throw new Error(`Kokoro TTS error ${res.status}: ${await res.text()}`);
+  const { audio } = (await res.json()) as { audio: string };
+  return Buffer.from(audio, "base64");
+}
+
+// ── Handler ────────────────────────────────────────────────────────────────
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
   if (req.method !== "POST") {
-    return res.status(405).json({ success: false, message: "Method not allowed" });
+    return res
+      .status(405)
+      .json({ success: false, message: "Method not allowed" });
   }
 
-  const { image } = req.body;
+  if (!KOKORO_BASE_URL)
+    return res
+      .status(500)
+      .json({ success: false, message: "KOKORO_API_URL not configured" });
+  if (!GEMINI_API_KEY)
+    return res
+      .status(500)
+      .json({ success: false, message: "GEMINI_API_KEY not configured" });
 
-  if (!image || typeof image !== "string") {
-    return res.status(400).json({ success: false, message: "image (base64) is required" });
+  // Accept either { file } (new unified field) or { image } (legacy)
+  const raw = (req.body?.file ?? req.body?.image) as string | undefined;
+
+  if (!raw || typeof raw !== "string") {
+    return res
+      .status(400)
+      .json({ success: false, message: "file (base64 data URL) is required" });
   }
 
-  if (!KOKORO_BASE_URL) {
-    return res.status(500).json({ success: false, message: "KOKORO_API_URL is not configured" });
+  const { base64, mimeType } = stripDataUrl(raw);
+  const fileType = detectFileType(mimeType);
+
+  if (fileType === "unknown") {
+    return res.status(415).json({
+      success: false,
+      message: "Unsupported file type. Upload an image, PDF, or .txt file.",
+    });
   }
 
-  if (!GEMINI_API_KEY) {
-    return res.status(500).json({ success: false, message: "GEMINI_API_KEY is not configured" });
+  const fileSizeMB = Buffer.byteLength(base64, "base64") / (1024 * 1024);
+  if (fileSizeMB > MAX_FILE_SIZE_MB) {
+    return res.status(413).json({
+      success: false,
+      message: `File too large. Maximum is ${MAX_FILE_SIZE_MB}MB.`,
+    });
   }
 
   try {
-    // Step 1: Extract text from image using Gemini vision
-    const { text, voice } = await extractTextFromImage(image);
+    const extracted =
+      fileType === "image"
+        ? await extractFromImage(base64, mimeType)
+        : fileType === "pdf"
+          ? await extractFromPdf(base64)
+          : extractFromText(base64);
 
-    // Step 2: Send extracted text to Kokoro TTS
-    const kokoroRes = await fetch(`${KOKORO_BASE_URL}/tts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voice, speed: 1.0, lang_code: "a" }),
-    });
-
-    if (!kokoroRes.ok) {
-      const errBody = await kokoroRes.text();
-      console.error("[Image TTS] Kokoro error:", kokoroRes.status, errBody);
-      return res.status(502).json({
+    if (!extracted.text.trim()) {
+      return res.status(422).json({
         success: false,
-        message: `Kokoro TTS service error: ${kokoroRes.status}`,
+        message: "No readable text found in the uploaded file.",
       });
     }
 
-    const { audio } = await kokoroRes.json() as { audio: string };
-
-    const audioBuffer = Buffer.from(audio, "base64");
+    const audioBuffer = await synthesise(
+      extracted.text,
+      langToVoice(extracted.lang),
+    );
 
     res.setHeader("Content-Type", "audio/wav");
-    res.setHeader("Content-Disposition", 'inline; filename="image-speech.wav"');
+    res.setHeader("Content-Disposition", 'inline; filename="tolatu.wav"');
     res.setHeader("Content-Length", audioBuffer.length);
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(audioBuffer);
-
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[Image TTS] Error:", message);
+    console.error("[file-to-speech]", message);
     return res.status(500).json({ success: false, message });
   }
 }
