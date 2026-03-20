@@ -1,22 +1,27 @@
 import Link from "next/link";
 
 const Footer = () => (
-  <footer className="w-full py-8 border-t border-gray-800">
-    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center px-8 text-sm text-gray-400">
-      <p>
-        &copy; {new Date().getFullYear()} Tolatu. All rights reserved.
-      </p>
-      <div className="flex gap-6 mt-4 md:mt-0">
-        <Link href="/#features" className="hover:text-pink-400 transition-colors">
-          Features
+  <footer className="border-t border-white/[0.06] px-6 md:px-10 py-7 flex flex-wrap items-center justify-between gap-4">
+    <div className="flex items-center gap-2">
+      <span className="font-extrabold text-lg tracking-tight text-[var(--amber)]" style={{ fontFamily: "var(--font-display)" }}>
+        tolatu
+      </span>
+      <span className="text-xs text-[var(--text3)]">© {new Date().getFullYear()}</span>
+    </div>
+    <div className="flex gap-6">
+      {[
+        { href: "/#features", label: "Features" },
+        { href: "/pricing",   label: "Pricing"  },
+        { href: "/contact",   label: "Contact"  },
+      ].map(({ href, label }) => (
+        <Link
+          key={label}
+          href={href}
+          className="text-xs text-[var(--text3)] hover:text-[var(--amber)] transition-colors no-underline"
+        >
+          {label}
         </Link>
-        <Link href="/pricing" className="hover:text-pink-400 transition-colors">
-          Pricing
-        </Link>
-        <Link href="/contact" className="hover:text-pink-400 transition-colors">
-          Contact
-        </Link>
-      </div>
+      ))}
     </div>
   </footer>
 );
