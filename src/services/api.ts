@@ -1,86 +1,51 @@
-import axios from "axios";
+export type Voice = {
+  value: string;
+  label: string;
+  lang: string;
+};
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE = "/api";
 
-if (!apiUrl) {
-  throw new Error("NEXT_PUBLIC_API_URL is not defined");
+export async function fetchVoices(): Promise<Voice[]> {
+  const res = await fetch(`${API_BASE}/voices`);
+  if (!res.ok) throw new Error("Failed to fetch voices");
+  const { data } = await res.json();
+  return data as Voice[];
 }
 
-type ApiVoice = {
-  name: string;
-  gender: string;
-  country: string;
-  voice: string;
-};
-
-export type Voice = {
-  label: string;
-  value: string;
-  name: string;
-  gender: string;
-  country: string;
-  voice: string;
-};
-
-export const fetchVoices = async (): Promise<Voice[]> => {
-  const { data: response } = await axios.get<{ data: ApiVoice[] }>(
-    `${apiUrl}/get-available-voices`
-  );
-  if (!response.data) {
-    throw new Error("No voices available");
-  }
-  return response.data.map((v) => ({
-    label: `${v.name} (${v.gender}, ${v.country})`,
-    value: v.voice,
-    ...v,
-  }));
-};
-
-export const textToSpeech = async (
+export async function textToSpeech(
   text: string,
-  voice: string
-): Promise<Blob> => {
-  const query = new URLSearchParams({ text, voice });
-  const res = await fetch(
-    `${apiUrl}/text-to-speech-with-edge?${query.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "audio/mpeg" },
-    }
-  );
+  voice: string,
+  speed: number = 1.0
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/tts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice, speed }),
+  });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(
-      `HTTP error! status: ${res.status}, details: ${errorText}`
-    );
+    const err = await res.json().catch(() => ({ message: "TTS request failed" }));
+    throw new Error(err.message ?? "TTS request failed");
   }
 
   return res.blob();
-};
+}
 
-export const imageToSpeech = async (
+export async function imageToSpeech(
   base64Image: string,
-  imageFile: File | null
-): Promise<Blob> => {
-  const res = await axios.post(
-    `${apiUrl}/image-to-speech`,
-    {
-      image: {
-        uri: base64Image,
-        name: imageFile?.name,
-        type: imageFile?.type,
-      },
-    },
-    {
-      headers: { "Content-Type": "application/json" },
-      responseType: "blob",
-    }
-  );
+  _file?: File | null
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/image-to-speech`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: base64Image }),
+  });
 
-  if (res.status !== 200) {
-    throw new Error(`HTTP error! status: ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Image TTS request failed" }));
+    throw new Error(err.message ?? "Image TTS request failed");
   }
 
-  return res.data;
-};
+  return res.blob();
+}
